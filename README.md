@@ -1,2 +1,3 @@
-# rate-limiter
-Rate limiter in Go
+# Rate Limiter
+
+Rate limiter in Golang.
