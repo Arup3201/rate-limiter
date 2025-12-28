@@ -30,8 +30,13 @@ func CreateTokenBucket(cap, rate int) *tokenBucket {
 func (tb *tokenBucket) refill() {
 	now := time.Now()
 
+	if tb.lastFilled.IsZero() {
+		tb.lastFilled = now // initiate for next refill
+		return
+	}
+
 	elapsed := now.Sub(tb.lastFilled)
-	tokensToAdd := int(elapsed.Seconds() * float64(tb.rate))
+	tokensToAdd := int(elapsed.Seconds()) * tb.rate
 
 	if tokensToAdd > 0 {
 		tb.lastFilled = now
@@ -69,13 +74,13 @@ func TokenBucketRateLimiter(capacity, rate int) RateLimiter {
 				next.ServeHTTP(rec, r)
 
 				maps.Copy(w.Header(), rec.Header())
-				w.Header().Add("X-Ratelimit-Remaining", strconv.Itoa(bucket.capacity-bucket.tokens))
+				w.Header().Add("X-Ratelimit-Remaining", strconv.Itoa(bucket.tokens))
 				w.Header().Add("X-Ratelimit-Limit", strconv.Itoa(bucket.capacity))
 				w.WriteHeader(rec.Result().StatusCode)
 				w.Write(rec.Body.Bytes())
 			} else {
 				w.Header().Add("X-Ratelimit-Limit", strconv.Itoa(bucket.capacity))
-				w.Header().Add("X-Ratelimit-Retry-After", strconv.Itoa(int(bucket.retryAfter.Seconds())))
+				w.Header().Add("X-Ratelimit-Retry-After", strconv.Itoa(int(bucket.retryAfter.Milliseconds())))
 				w.WriteHeader(http.StatusTooManyRequests)
 			}
 		})
